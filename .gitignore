@@ -1,0 +1,3 @@
+_virtualenv
+*.pyc
+locket.egg-info
