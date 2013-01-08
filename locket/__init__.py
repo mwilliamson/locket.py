@@ -1,5 +1,6 @@
 import fcntl
 import time
+import errno
 
 
 __all__ = ["lock_file"]
@@ -29,11 +30,14 @@ class _LockFile(object):
                 try:
                     fcntl.flock(self._file, fcntl.LOCK_EX | fcntl.LOCK_NB)
                     return
-                except IOError:
-                    if time.time() - start_time > self._timeout:
-                        raise LockError("Couldn't lock {0}".format(self._path))
+                except IOError as error:
+                    if error.errno in [errno.EACCES, errno.EAGAIN]:
+                        if time.time() - start_time > self._timeout:
+                            raise LockError("Couldn't lock {0}".format(self._path))
+                        else:
+                            time.sleep(self._retry_period)
                     else:
-                        time.sleep(self._retry_period)
+                        raise
                     
     
     def release(self):
