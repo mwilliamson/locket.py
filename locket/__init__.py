@@ -58,9 +58,11 @@ class _LockFile(object):
         self._path = path
         self._timeout = timeout
         self._retry_period = retry_period
+        self._file = None
     
     def acquire(self):
-        self._file = open(self._path, "w")
+        if self._file is None:
+            self._file = open(self._path, "w")
         if self._timeout is None and _lock_file_blocking_available:
             _lock_file_blocking(self._file)
         else:
