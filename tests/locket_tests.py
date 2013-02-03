@@ -45,6 +45,22 @@ def lock_can_be_acquired_with_timeout_of_zero(lock_path):
 
 
 @test
+def lock_is_released_by_context_manager_exit(lock_path):
+    has_run = False
+    
+    # Keep a reference to first_lock so it holds onto the lock
+    first_lock = locket.lock_file(lock_path, timeout=0)
+    
+    with first_lock:
+        pass
+        
+    with locket.lock_file(lock_path, timeout=0):
+        has_run = True
+    
+    assert has_run
+
+
+@test
 def can_use_acquire_and_release_to_control_lock(lock_path):
     has_run = False
     lock = locket.lock_file(lock_path)

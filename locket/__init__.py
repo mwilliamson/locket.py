@@ -88,4 +88,5 @@ class _LockFile(object):
         return self
         
     def __exit__(self, *args):
+        self.release()
         return
