@@ -3,15 +3,18 @@
 test:
 	sh -c '. _virtualenv/bin/activate; nosetests -m'\''^$$'\'' `find tests -name '\''*.py'\''`'
 	
-upload: setup
+upload: setup assert-converted-readme
 	python setup.py sdist upload
 	make clean
 	
 register: setup
 	python setup.py register
 
-README:
-	pandoc --from=markdown --to=rst README.md > README
+README: README.md
+	pandoc --from=markdown --to=rst README.md > README || cp README.md README
+
+assert-converted-readme:
+	test "`cat README`" != "`cat README.md`"
 
 clean:
 	rm -f README
@@ -29,3 +32,4 @@ setup: README
 
 _virtualenv: 
 	virtualenv _virtualenv
+	_virtualenv/bin/pip install 'distribute>=0.6.45'
