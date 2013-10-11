@@ -5,7 +5,7 @@ import sys
 import time
 import signal
 
-from nose.tools import istest
+from nose.tools import istest, nottest
 import spur
 
 import locket
@@ -15,6 +15,7 @@ from .tempdir import create_temporary_dir
 local_shell = spur.LocalShell()
 
 
+@nottest
 def test(func):
     @functools.wraps(func)
     @istest
