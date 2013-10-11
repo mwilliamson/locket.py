@@ -1,3 +1,6 @@
-_virtualenv
+/_virtualenv
 *.pyc
-locket.egg-info
+/locket.egg-info
+/README
+/MANIFEST
+/.tox
