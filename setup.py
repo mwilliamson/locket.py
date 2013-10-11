@@ -12,6 +12,7 @@ setup(
     description='File-based locks for Python for Linux and Windows',
     long_description=read("README"),
     author='Michael Williamson',
+    author_email='mike@zwobble.org',
     url='http://github.com/mwilliamson/locket.py',
     packages=['locket'],
     keywords="lock filelock lockfile"
