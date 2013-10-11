@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
+
 import sys
 import os
 
@@ -7,12 +9,12 @@ import locket
 
 
 def _print(output):
-    print output
+    print(output)
     sys.stdout.flush()
 
 
 if __name__ == "__main__":
-    print os.getpid()
+    print(os.getpid())
     lock_path = sys.argv[1]
     if sys.argv[2] == "None":
         timeout = None

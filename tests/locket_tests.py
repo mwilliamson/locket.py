@@ -1,6 +1,6 @@
 import functools
 import os
-import StringIO
+import io
 import sys
 import time
 import signal
@@ -204,8 +204,8 @@ def _lockers(number_of_lockers, lock_path):
 
 class Locker(object):
     def __init__(self, path, timeout=None):
-        self._stdout = StringIO.StringIO()
-        self._stderr = StringIO.StringIO()
+        self._stdout = io.BytesIO()
+        self._stderr = io.BytesIO()
         self._process = local_shell.spawn(
             [sys.executable, _locker_script_path, path, str(timeout)],
             stdout=self._stdout,
@@ -213,10 +213,10 @@ class Locker(object):
         )
         
     def acquire(self):
-        self._process.stdin_write("\n")
+        self._process.stdin_write(b"\n")
         
     def release(self):
-        self._process.stdin_write("\n")
+        self._process.stdin_write(b"\n")
     
     def wait_for_lock(self):
         start_time = time.time()
@@ -239,6 +239,7 @@ class Locker(object):
         os.kill(pid, signal)
     
     def _stdout_lines(self):
-        return map(str.strip, self._stdout.getvalue().split("\n"))
+        output = self._stdout.getvalue().decode("ascii")
+        return [line.strip() for line in output.split("\n")]
 
 _locker_script_path = os.path.join(os.path.dirname(__file__), "locker.py")
