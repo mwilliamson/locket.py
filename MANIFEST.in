@@ -1,2 +1,1 @@
-include setup.py LICENSE README.rst
-recursive-include locket *.py
+include LICENSE README.rst
