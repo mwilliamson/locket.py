@@ -10,7 +10,7 @@ setup(
     name='locket',
     version='0.1.1',
     description='File-based locks for Python for Linux and Windows',
-    long_description=read("README"),
+    long_description=read("README.rst"),
     author='Michael Williamson',
     author_email='mike@zwobble.org',
     url='http://github.com/mwilliamson/locket.py',
