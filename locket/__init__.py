@@ -64,28 +64,34 @@ class _LockFile(object):
 
     def acquire(self):
         self._thread_lock.acquire()
-        if self._file is None:
-            self._file = open(self._path, "w")
-        if self._timeout is None and _lock_file_blocking_available:
-            _lock_file_blocking(self._file)
-        else:
-            start_time = time.time()
-            while True:
-                success = _lock_file_non_blocking(self._file)
-                if success:
-                    return
-                elif (self._timeout is not None and
-                        time.time() - start_time > self._timeout):
-                    raise LockError("Couldn't lock {0}".format(self._path))
-                else:
-                    time.sleep(self._retry_period)
+        try:
+            if self._file is None:
+                self._file = open(self._path, "w")
+            if self._timeout is None and _lock_file_blocking_available:
+                _lock_file_blocking(self._file)
+            else:
+                start_time = time.time()
+                while True:
+                    success = _lock_file_non_blocking(self._file)
+                    if success:
+                        return
+                    elif (self._timeout is not None and
+                            time.time() - start_time > self._timeout):
+                        raise LockError("Couldn't lock {0}".format(self._path))
+                    else:
+                        time.sleep(self._retry_period)
+        except Exception as e:
+            self._thread_lock.release()
+            raise e
 
 
     def release(self):
-        _unlock_file(self._file)
-        self._file.close()
-        self._file = None
-        self._thread_lock.release()
+        try:
+            _unlock_file(self._file)
+            self._file.close()
+            self._file = None
+        finally:
+            self._thread_lock.release()
 
     def __enter__(self):
         self.acquire()
