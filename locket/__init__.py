@@ -1,5 +1,6 @@
 import time
 import errno
+import threading
 
 
 __all__ = ["lock_file"]
@@ -59,8 +60,10 @@ class _LockFile(object):
         self._timeout = timeout
         self._retry_period = retry_period
         self._file = None
+        self._thread_lock = threading.Lock()
 
     def acquire(self):
+        self._thread_lock.acquire()
         if self._file is None:
             self._file = open(self._path, "w")
         if self._timeout is None and _lock_file_blocking_available:
@@ -82,6 +85,7 @@ class _LockFile(object):
         _unlock_file(self._file)
         self._file.close()
         self._file = None
+        self._thread_lock.release()
 
     def __enter__(self):
         self.acquire()
