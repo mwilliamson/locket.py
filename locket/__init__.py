@@ -80,9 +80,9 @@ class _LockFile(object):
                         raise LockError("Couldn't lock {0}".format(self._path))
                     else:
                         time.sleep(self._retry_period)
-        except Exception as e:
+        except Exception:
             self._thread_lock.release()
-            raise e
+            raise
 
 
     def release(self):
