@@ -1,7 +1,7 @@
 import time
 import errno
 import threading
-
+import weakref
 
 __all__ = ["lock_file"]
 
@@ -46,7 +46,23 @@ else:
         fcntl.flock(file_.fileno(), fcntl.LOCK_UN)
 
 
+_locks_lock = threading.Lock()
+_locks = weakref.WeakValueDictionary()
+
+
 def lock_file(path, **kwargs):
+    _locks_lock.acquire()
+    try:
+        lock = _locks.get(path)
+        if lock is None:
+            lock = _create_lock_file(path, **kwargs)
+            _locks[path] = lock
+        return lock
+    finally:
+        _locks_lock.release()
+    
+    
+def _create_lock_file(path, **kwargs):
     thread_lock = _ThreadLock(path, **kwargs)
     file_lock = _LockFile(path, **kwargs)
     return _LockSet([thread_lock, file_lock])

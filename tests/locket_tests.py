@@ -93,6 +93,20 @@ def thread_cannot_obtain_lock_using_same_path_twice_without_release(lock_path):
             assert False, "Expected LockError"
         except locket.LockError:
             pass
+
+
+@test
+def the_same_lock_file_object_is_used_for_the_same_path(lock_path):
+    first_lock = locket.lock_file(lock_path, timeout=0)
+    second_lock = locket.lock_file(lock_path, timeout=0)
+    assert first_lock is second_lock
+
+
+@test
+def different_file_objects_are_used_for_different_paths(lock_path):
+    first_lock = locket.lock_file(lock_path, timeout=0)
+    second_lock = locket.lock_file(lock_path + "-2", timeout=0)
+    assert first_lock is not second_lock
             
 
 @test
