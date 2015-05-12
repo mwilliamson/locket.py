@@ -72,7 +72,17 @@ def can_use_acquire_and_release_to_control_lock(lock_path):
         lock.release()
     
     assert has_run
-    
+
+
+@test
+def thread_cannot_obtain_lock_using_same_object_twice_without_release(lock_path):
+    with locket.lock_file(lock_path, timeout=0) as lock:
+        try:
+            lock.acquire()
+            assert False, "Expected LockError"
+        except locket.LockError:
+            pass
+            
 
 @test
 def lock_file_blocks_until_lock_is_available(lock_path):

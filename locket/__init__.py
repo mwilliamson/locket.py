@@ -46,15 +46,20 @@ else:
         fcntl.flock(file_.fileno(), fcntl.LOCK_UN)
 
 
-def lock_file(*args, **kwargs):
-    return _LockFile(*args, **kwargs)
+def lock_file(path, **kwargs):
+    thread_lock = _ThreadLock(path, **kwargs)
+    file_lock = _LockFile(path, **kwargs)
+    return _LockSet([thread_lock, file_lock])
 
 
 class LockError(Exception):
     pass
 
 
-def _acquire_non_blocking(acquire, timeout, retry_period, error_message):
+def _acquire_non_blocking(acquire, timeout, retry_period, path):
+    if retry_period is None:
+        retry_period = 0.05
+    
     start_time = time.time()
     while True:
         success = acquire()
@@ -62,13 +67,64 @@ def _acquire_non_blocking(acquire, timeout, retry_period, error_message):
             return
         elif (timeout is not None and
                 time.time() - start_time > timeout):
-            raise LockError(error_message)
+            raise LockError("Couldn't lock {0}".format(path))
         else:
             time.sleep(retry_period)
 
 
+class _LockSet(object):
+    def __init__(self, locks):
+        self._locks = locks
+    
+    def acquire(self):
+        acquired_locks = []
+        try:
+            for lock in self._locks:
+                lock.acquire()
+                acquired_locks.append(lock)
+        except:
+            for acquired_lock in reversed(acquired_locks):
+                # TODO: handle exceptions
+                acquired_lock.release()
+            raise
+    
+    def release(self):
+        for lock in reversed(self._locks):
+            # TODO: Handle exceptions
+            lock.release()
+    
+    def __enter__(self):
+        self.acquire()
+        return self
+        
+    def __exit__(self, *args):
+        self.release()
+
+
+class _ThreadLock(object):
+    def __init__(self, path, timeout=None, retry_period=None):
+        self._path = path
+        self._timeout = timeout
+        self._retry_period = retry_period
+        self._lock = threading.Lock()
+    
+    def acquire(self):
+        if self._timeout is None:
+            self._lock.acquire()
+        else:
+            _acquire_non_blocking(
+                acquire=lambda: self._lock.acquire(False),
+                timeout=self._timeout,
+                retry_period=self._retry_period,
+                path=self._path,
+            )
+    
+    def release(self):
+        self._lock.release()
+
+
 class _LockFile(object):
-    def __init__(self, path, timeout=None, retry_period=0.05):
+    def __init__(self, path, timeout=None, retry_period=None):
         self._path = path
         self._timeout = timeout
         self._retry_period = retry_period
@@ -76,35 +132,19 @@ class _LockFile(object):
         self._thread_lock = threading.Lock()
 
     def acquire(self):
-        self._thread_lock.acquire()
-        try:
-            if self._file is None:
-                self._file = open(self._path, "w")
-            if self._timeout is None and _lock_file_blocking_available:
-                _lock_file_blocking(self._file)
-            else:
-                _acquire_non_blocking(
-                    acquire=lambda: _lock_file_non_blocking(self._file),
-                    timeout=self._timeout,
-                    retry_period=self._retry_period,
-                    error_message="Couldn't lock {0}".format(self._path),
-                )
-        except Exception:
-            self._thread_lock.release()
-            raise
-
+        if self._file is None:
+            self._file = open(self._path, "w")
+        if self._timeout is None and _lock_file_blocking_available:
+            _lock_file_blocking(self._file)
+        else:
+            _acquire_non_blocking(
+                acquire=lambda: _lock_file_non_blocking(self._file),
+                timeout=self._timeout,
+                retry_period=self._retry_period,
+                path=self._path,
+            )
+    
     def release(self):
-        try:
-            _unlock_file(self._file)
-            self._file.close()
-            self._file = None
-        finally:
-            self._thread_lock.release()
-
-    def __enter__(self):
-        self.acquire()
-        return self
-
-    def __exit__(self, *args):
-        self.release()
-        return
+        _unlock_file(self._file)
+        self._file.close()
+        self._file = None
