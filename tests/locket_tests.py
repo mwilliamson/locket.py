@@ -82,6 +82,17 @@ def thread_cannot_obtain_lock_using_same_object_twice_without_release(lock_path)
             assert False, "Expected LockError"
         except locket.LockError:
             pass
+
+
+@test
+def thread_cannot_obtain_lock_using_same_path_twice_without_release(lock_path):
+    with locket.lock_file(lock_path, timeout=0):
+        lock = locket.lock_file(lock_path, timeout=0)
+        try:
+            lock.acquire()
+            assert False, "Expected LockError"
+        except locket.LockError:
+            pass
             
 
 @test
