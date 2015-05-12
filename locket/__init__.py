@@ -54,6 +54,19 @@ class LockError(Exception):
     pass
 
 
+def _acquire_non_blocking(acquire, timeout, retry_period, error_message):
+    start_time = time.time()
+    while True:
+        success = acquire()
+        if success:
+            return
+        elif (timeout is not None and
+                time.time() - start_time > timeout):
+            raise LockError(error_message)
+        else:
+            time.sleep(retry_period)
+
+
 class _LockFile(object):
     def __init__(self, path, timeout=None, retry_period=0.05):
         self._path = path
@@ -70,20 +83,15 @@ class _LockFile(object):
             if self._timeout is None and _lock_file_blocking_available:
                 _lock_file_blocking(self._file)
             else:
-                start_time = time.time()
-                while True:
-                    success = _lock_file_non_blocking(self._file)
-                    if success:
-                        return
-                    elif (self._timeout is not None and
-                            time.time() - start_time > self._timeout):
-                        raise LockError("Couldn't lock {0}".format(self._path))
-                    else:
-                        time.sleep(self._retry_period)
+                _acquire_non_blocking(
+                    acquire=lambda: _lock_file_non_blocking(self._file),
+                    timeout=self._timeout,
+                    retry_period=self._retry_period,
+                    error_message="Couldn't lock {0}".format(self._path),
+                )
         except Exception:
             self._thread_lock.release()
             raise
-
 
     def release(self):
         try:
