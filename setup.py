@@ -15,7 +15,7 @@ setup(
     author_email='mike@zwobble.org',
     url='http://github.com/mwilliamson/locket.py',
     packages=['locket'],
-    keywords="lock filelock lockfile",
+    keywords="lock filelock lockfile process",
     classifiers=[
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',
