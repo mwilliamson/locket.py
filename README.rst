@@ -28,7 +28,10 @@ Locket implements a lock that can be used by multiple processes provided they us
         lock.release()
 
 Locks largely behave as (non-reentrant) `Lock` instances from the `threading`
-module in the standard library. That is:
+module in the standard library. Specifically, their behaviour is:
+
+* Locks are uniquely identified by the file being locked,
+  both in the same process and across different processes.
 
 * Locks are either in a locked or unlocked state.
 
