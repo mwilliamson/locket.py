@@ -27,7 +27,7 @@ Locket implements a lock that can be used by multiple processes provided they us
     finally:
         lock.release()
 
-Locks largely behave as (non-reentrant) `Lock` instances from the `threading`
+Locks largely behave as (non-reentrant) ``Lock`` instances from the ``threading``
 module in the standard library. Specifically, their behaviour is:
 
 * Locks are uniquely identified by the file being locked,
@@ -35,13 +35,13 @@ module in the standard library. Specifically, their behaviour is:
 
 * Locks are either in a locked or unlocked state.
 
-* When the lock is unlocked, calling `acquire()` returns immediately and changes
+* When the lock is unlocked, calling ``acquire()`` returns immediately and changes
   the lock state to locked.
 
 * When the lock is locked, calling `acquire()` will block until the lock state
   changes to unlocked, or until the timeout expires.
 
-* If a process holds a lock, any thread in that process can call `release()` to
+* If a process holds a lock, any thread in that process can call ``release()`` to
   change the state to unlocked.
 
-* Behaviour of locks after `fork` is undefined.
+* Behaviour of locks after ``fork`` is undefined.
