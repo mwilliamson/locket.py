@@ -99,15 +99,34 @@ def thread_cannot_obtain_lock_using_same_path_twice_without_release(lock_path):
 def the_same_lock_file_object_is_used_for_the_same_path(lock_path):
     first_lock = locket.lock_file(lock_path, timeout=0)
     second_lock = locket.lock_file(lock_path, timeout=0)
-    assert first_lock is second_lock
+    assert first_lock._lock is second_lock._lock
 
 
 @test
 def different_file_objects_are_used_for_different_paths(lock_path):
     first_lock = locket.lock_file(lock_path, timeout=0)
     second_lock = locket.lock_file(lock_path + "-2", timeout=0)
-    assert first_lock is not second_lock
+    assert first_lock._lock is not second_lock._lock
             
+
+@test
+def lock_same_file_with_different_params(lock_path):
+    lock1 = locket.lock_file(lock_path)
+    lock2 = locket.lock_file(lock_path, timeout=0)
+    lock1.acquire()
+    try:
+        # Shouldn't hang
+        lock2.acquire()
+        assert False, "Expected LockError"
+    except locket.LockError:
+        pass
+    # Same with __enter__
+    try:
+        with lock2:
+            assert False, "Expected LockError"
+    except locket.LockError:
+        pass
+
 
 @test
 def lock_file_blocks_until_lock_is_available(lock_path):
