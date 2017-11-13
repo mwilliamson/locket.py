@@ -110,20 +110,13 @@ def different_file_objects_are_used_for_different_paths(lock_path):
             
 
 @test
-def lock_same_file_with_different_params(lock_path):
+def thread_cannot_obtain_lock_using_same_path_with_different_arguments_without_release(lock_path):
     lock1 = locket.lock_file(lock_path)
     lock2 = locket.lock_file(lock_path, timeout=0)
     lock1.acquire()
     try:
-        # Shouldn't hang
         lock2.acquire()
         assert False, "Expected LockError"
-    except locket.LockError:
-        pass
-    # Same with __enter__
-    try:
-        with lock2:
-            assert False, "Expected LockError"
     except locket.LockError:
         pass
 
