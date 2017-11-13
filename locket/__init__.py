@@ -88,16 +88,7 @@ def _acquire_non_blocking(acquire, timeout, retry_period, path):
             time.sleep(retry_period)
 
 
-class _LockMixin(object):
-    def __enter__(self):
-        self.acquire()
-        return self
-
-    def __exit__(self, *args):
-        self.release()
-
-
-class _LockSet(_LockMixin):
+class _LockSet(object):
     def __init__(self, locks):
         self._locks = locks
     
@@ -119,7 +110,7 @@ class _LockSet(_LockMixin):
             lock.release()
 
 
-class _ThreadLock(_LockMixin):
+class _ThreadLock(object):
     def __init__(self, path):
         self._path = path
         self._lock = threading.Lock()
@@ -139,7 +130,7 @@ class _ThreadLock(_LockMixin):
         self._lock.release()
 
 
-class _LockFile(_LockMixin):
+class _LockFile(object):
     def __init__(self, path):
         self._path = path
         self._file = None
@@ -164,7 +155,7 @@ class _LockFile(_LockMixin):
         self._file = None
 
 
-class _Locker(_LockMixin):
+class _Locker(object):
     """
     A lock wrapper to always apply the given *timeout* and *retry_period*
     to acquire() calls.
@@ -179,3 +170,10 @@ class _Locker(_LockMixin):
 
     def release(self):
         self._lock.release()
+
+    def __enter__(self):
+        self.acquire()
+        return self
+
+    def __exit__(self, *args):
+        self.release()
