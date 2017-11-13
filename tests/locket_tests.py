@@ -97,6 +97,8 @@ def thread_cannot_obtain_lock_using_same_path_twice_without_release(lock_path):
 
 @test
 def the_same_lock_file_object_is_used_for_the_same_path(lock_path):
+    # We explicitly check the same lock is used to ensure that the lock isn't
+    # re-entrant, even if the underlying platform lock is re-entrant.
     first_lock = locket.lock_file(lock_path, timeout=0)
     second_lock = locket.lock_file(lock_path, timeout=0)
     assert first_lock._lock is second_lock._lock
