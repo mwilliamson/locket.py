@@ -97,7 +97,7 @@ def thread_cannot_obtain_lock_using_same_path_twice_without_release(lock_path):
 
 @test
 def thread_cannot_obtain_lock_using_same_path_with_different_arguments_without_release(lock_path):
-    lock1 = locket.lock_file(lock_path)
+    lock1 = locket.lock_file(lock_path, timeout=None)
     lock2 = locket.lock_file(lock_path, timeout=0)
     lock1.acquire()
     try:
