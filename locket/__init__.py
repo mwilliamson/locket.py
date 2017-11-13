@@ -55,16 +55,16 @@ def lock_file(path, **kwargs):
     try:
         lock = _locks.get(path)
         if lock is None:
-            lock = _create_lock_file(path, **kwargs)
+            lock = _create_lock_file(path)
             _locks[path] = lock
-        return lock
     finally:
         _locks_lock.release()
+    return _Locker(lock, **kwargs)
     
     
-def _create_lock_file(path, **kwargs):
-    thread_lock = _ThreadLock(path, **kwargs)
-    file_lock = _LockFile(path, **kwargs)
+def _create_lock_file(path):
+    thread_lock = _ThreadLock(path)
+    file_lock = _LockFile(path)
     return _LockSet([thread_lock, file_lock])
 
 
@@ -92,11 +92,11 @@ class _LockSet(object):
     def __init__(self, locks):
         self._locks = locks
     
-    def acquire(self):
+    def acquire(self, timeout, retry_period):
         acquired_locks = []
         try:
             for lock in self._locks:
-                lock.acquire()
+                lock.acquire(timeout, retry_period)
                 acquired_locks.append(lock)
         except:
             for acquired_lock in reversed(acquired_locks):
@@ -108,30 +108,21 @@ class _LockSet(object):
         for lock in reversed(self._locks):
             # TODO: Handle exceptions
             lock.release()
-    
-    def __enter__(self):
-        self.acquire()
-        return self
-        
-    def __exit__(self, *args):
-        self.release()
 
 
 class _ThreadLock(object):
-    def __init__(self, path, timeout=None, retry_period=None):
+    def __init__(self, path):
         self._path = path
-        self._timeout = timeout
-        self._retry_period = retry_period
         self._lock = threading.Lock()
     
-    def acquire(self):
-        if self._timeout is None:
+    def acquire(self, timeout=None, retry_period=None):
+        if timeout is None:
             self._lock.acquire()
         else:
             _acquire_non_blocking(
                 acquire=lambda: self._lock.acquire(False),
-                timeout=self._timeout,
-                retry_period=self._retry_period,
+                timeout=timeout,
+                retry_period=retry_period,
                 path=self._path,
             )
     
@@ -140,23 +131,21 @@ class _ThreadLock(object):
 
 
 class _LockFile(object):
-    def __init__(self, path, timeout=None, retry_period=None):
+    def __init__(self, path):
         self._path = path
-        self._timeout = timeout
-        self._retry_period = retry_period
         self._file = None
         self._thread_lock = threading.Lock()
 
-    def acquire(self):
+    def acquire(self, timeout=None, retry_period=None):
         if self._file is None:
-            self._file = open(self._path, "w")
-        if self._timeout is None and _lock_file_blocking_available:
+            self._file = open(self._path, "wb")
+        if timeout is None and _lock_file_blocking_available:
             _lock_file_blocking(self._file)
         else:
             _acquire_non_blocking(
                 acquire=lambda: _lock_file_non_blocking(self._file),
-                timeout=self._timeout,
-                retry_period=self._retry_period,
+                timeout=timeout,
+                retry_period=retry_period,
                 path=self._path,
             )
     
@@ -164,3 +153,27 @@ class _LockFile(object):
         _unlock_file(self._file)
         self._file.close()
         self._file = None
+
+
+class _Locker(object):
+    """
+    A lock wrapper to always apply the given *timeout* and *retry_period*
+    to acquire() calls.
+    """
+    def __init__(self, lock, timeout=None, retry_period=None):
+        self._lock = lock
+        self._timeout = timeout
+        self._retry_period = retry_period
+
+    def acquire(self):
+        self._lock.acquire(self._timeout, self._retry_period)
+
+    def release(self):
+        self._lock.release()
+
+    def __enter__(self):
+        self.acquire()
+        return self
+
+    def __exit__(self, *args):
+        self.release()
