@@ -177,10 +177,11 @@ def lock_is_released_if_holding_process_is_brutally_killed(lock_path):
     assert locker_1.has_lock()
     assert not locker_2.has_lock()
     
-    locker_1.kill(signal.SIGKILL)
+    locker_1.kill(getattr(signal, "SIGKILL", signal.SIGTERM))
     time.sleep(0.1)
     
     assert locker_2.has_lock()
+    locker_2.release()
 
 
 @test
@@ -229,6 +230,8 @@ def error_is_raised_after_timeout_has_expired(lock_path):
     assert locker_1.has_lock()
     assert not locker_2.has_lock()
     assert locker_2.has_error()
+    
+    locker_1.release()
 
 
 @test
@@ -254,6 +257,8 @@ def lock_is_acquired_if_available_before_timeout_expires(lock_path):
     
     assert not locker_1.has_lock()
     assert locker_2.has_lock()
+
+    locker_2.release()
 
 
 def _lockers(number_of_lockers, lock_path):
