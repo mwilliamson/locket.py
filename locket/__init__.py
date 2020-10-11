@@ -134,7 +134,6 @@ class _LockFile(object):
     def __init__(self, path):
         self._path = path
         self._file = None
-        self._thread_lock = threading.Lock()
 
     def acquire(self, timeout=None, retry_period=None):
         if self._file is None:
