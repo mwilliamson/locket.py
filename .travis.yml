@@ -14,3 +14,10 @@ python:
 install:
   - "pip install tox"
 script: tox -e py
+
+jobs: 
+  exclude:
+    - python: "pypy"
+      arch: ppc64le
+    - python: "pypy3"
+      arch: ppc64le
