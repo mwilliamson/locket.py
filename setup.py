@@ -8,7 +8,7 @@ def read(fname):
 
 setup(
     name='locket',
-    version='0.2.0',
+    version='0.2.1',
     description='File-based locks for Python for Linux and Windows',
     long_description=read("README.rst"),
     author='Michael Williamson',
