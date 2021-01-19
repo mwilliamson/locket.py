@@ -14,11 +14,11 @@ Locket implements a lock that can be used by multiple processes provided they us
     # Raise error if lock cannot be acquired immediately
     with locket.lock_file("path/to/lock/file", timeout=0):
         perform_action()
-        
+
     # Raise error if lock cannot be acquired after thirty seconds
     with locket.lock_file("path/to/lock/file", timeout=30):
         perform_action()
-        
+
     # Without context managers:
     lock = locket.lock_file("path/to/lock/file")
     try:
@@ -45,3 +45,10 @@ module in the standard library. Specifically, their behaviour is:
   change the state to unlocked.
 
 * Behaviour of locks after ``fork`` is undefined.
+
+Installation
+------------
+
+.. code-block:: sh
+
+    pip install locket
