@@ -74,8 +74,8 @@ def lock_file(path, **kwargs):
     finally:
         _locks_lock.release()
     return _Locker(lock, **kwargs)
-    
-    
+
+
 def _create_lock_file(path):
     thread_lock = _ThreadLock(path)
     file_lock = _LockFile(path)
@@ -89,7 +89,7 @@ class LockError(Exception):
 def _acquire_non_blocking(acquire, timeout, retry_period, path):
     if retry_period is None:
         retry_period = 0.05
-    
+
     start_time = time.time()
     while True:
         success = acquire()
@@ -105,7 +105,7 @@ def _acquire_non_blocking(acquire, timeout, retry_period, path):
 class _LockSet(object):
     def __init__(self, locks):
         self._locks = locks
-    
+
     def acquire(self, timeout, retry_period):
         acquired_locks = []
         try:
@@ -117,7 +117,7 @@ class _LockSet(object):
                 # TODO: handle exceptions
                 acquired_lock.release()
             raise
-    
+
     def release(self):
         for lock in reversed(self._locks):
             # TODO: Handle exceptions
@@ -128,7 +128,7 @@ class _ThreadLock(object):
     def __init__(self, path):
         self._path = path
         self._lock = threading.Lock()
-    
+
     def acquire(self, timeout=None, retry_period=None):
         if timeout is None:
             self._lock.acquire()
@@ -139,7 +139,7 @@ class _ThreadLock(object):
                 retry_period=retry_period,
                 path=self._path,
             )
-    
+
     def release(self):
         self._lock.release()
 
@@ -150,18 +150,26 @@ class _LockFile(object):
         self._file = None
 
     def acquire(self, timeout=None, retry_period=None):
-        if self._file is None:
-            self._file = open(self._path, "wb")
-        if timeout is None and _lock_file_blocking_available:
-            _lock_file_blocking(self._file)
+        fileobj = open(self._path, "wb")
+
+        try:
+            if timeout is None and _lock_file_blocking_available:
+                _lock_file_blocking(fileobj)
+            else:
+                _acquire_non_blocking(
+                    acquire=lambda: _lock_file_non_blocking(fileobj),
+                    timeout=timeout,
+                    retry_period=retry_period,
+                    path=self._path,
+                )
+
+        except:
+            fileobj.close()
+            raise
+
         else:
-            _acquire_non_blocking(
-                acquire=lambda: _lock_file_non_blocking(self._file),
-                timeout=timeout,
-                retry_period=retry_period,
-                path=self._path,
-            )
-    
+            self._file = fileobj
+
     def release(self):
         _unlock_file(self._file)
         self._file.close()
