@@ -10,22 +10,36 @@ try:
     import fcntl
 except ImportError:
     try:
+        import ctypes
+        import ctypes.wintypes
         import msvcrt
     except ImportError:
-        raise ImportError("Platform not supported (failed to import fcntl, msvcrt)")
+        raise ImportError("Platform not supported (failed to import fcntl, ctypes, msvcrt)")
     else:
+        _kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
+        _WinAPI_LockFile = _kernel32.LockFile
+        _WinAPI_LockFile.restype = ctypes.wintypes.BOOL
+        _WinAPI_LockFile.argtypes = [ctypes.wintypes.HANDLE] + [ctypes.wintypes.DWORD] * 4
+
+        _WinAPI_UnlockFile = _kernel32.UnlockFile
+        _WinAPI_UnlockFile.restype = ctypes.wintypes.BOOL
+        _WinAPI_UnlockFile.argtypes = [ctypes.wintypes.HANDLE] + [ctypes.wintypes.DWORD] * 4
+
         _lock_file_blocking_available = False
 
         def _lock_file_non_blocking(file_):
-            try:
-                msvcrt.locking(file_.fileno(), msvcrt.LK_NBLCK, 1)
+            res = _WinAPI_LockFile(msvcrt.get_osfhandle(file_.fileno()), 0, 0, 1, 0)
+            if res:
                 return True
-            # TODO: check errno
-            except IOError:
+            else:
+                err = ctypes.get_last_error()
+                # 33 = ERROR_LOCK_VIOLATION
+                if err != 33:
+                    raise ctypes.WinError(err)
                 return False
 
         def _unlock_file(file_):
-            msvcrt.locking(file_.fileno(), msvcrt.LK_UNLCK, 1)
+            _WinAPI_UnlockFile(msvcrt.get_osfhandle(file_.fileno()), 0, 0, 1, 0)
 
 else:
     _lock_file_blocking_available = True

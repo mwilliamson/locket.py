@@ -2,6 +2,7 @@
 
 from __future__ import print_function
 
+import signal
 import sys
 import os
 
@@ -14,6 +15,7 @@ def _print(output):
 
 
 if __name__ == "__main__":
+    signal.signal(signal.SIGTERM, signal.SIG_DFL)
     print(os.getpid())
     lock_path = sys.argv[1]
     if sys.argv[2] == "None":
