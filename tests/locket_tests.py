@@ -23,7 +23,27 @@ def test(func):
         with create_temporary_dir() as temp_dir:
             lock_path = os.path.join(temp_dir, "some-lock")
             return func(lock_path)
-        
+
+    return run_test
+
+
+def with_lockers(func):
+    @functools.wraps(func)
+    def run_test(*args, **kwargs):
+        lockers = []
+
+        def spawn_locker(*args, **kwargs):
+            locker = _Locker(*args, **kwargs)
+            lockers.append(locker)
+            return locker
+
+        try:
+            return func(*args, spawn_locker=spawn_locker, **kwargs)
+        finally:
+            for locker in lockers:
+                locker.terminate()
+                locker.wait()
+
     return run_test
 
 
@@ -32,7 +52,7 @@ def single_process_can_obtain_uncontested_lock(lock_path):
     has_run = False
     with locket.lock_file(lock_path):
         has_run = True
-    
+
     assert has_run
 
 
@@ -41,23 +61,23 @@ def lock_can_be_acquired_with_timeout_of_zero(lock_path):
     has_run = False
     with locket.lock_file(lock_path, timeout=0):
         has_run = True
-    
+
     assert has_run
 
 
 @test
 def lock_is_released_by_context_manager_exit(lock_path):
     has_run = False
-    
+
     # Keep a reference to first_lock so it holds onto the lock
     first_lock = locket.lock_file(lock_path, timeout=0)
-    
+
     with first_lock:
         pass
-        
+
     with locket.lock_file(lock_path, timeout=0):
         has_run = True
-    
+
     assert has_run
 
 
@@ -70,7 +90,7 @@ def can_use_acquire_and_release_to_control_lock(lock_path):
         has_run = True
     finally:
         lock.release()
-    
+
     assert has_run
 
 
@@ -133,139 +153,141 @@ def different_file_objects_are_used_for_different_paths(lock_path):
 
 
 @test
-def lock_file_blocks_until_lock_is_available(lock_path):
-    locker_1 = Locker(lock_path)
-    locker_2 = Locker(lock_path)
-    
+@with_lockers
+def lock_file_blocks_until_lock_is_available(lock_path, spawn_locker):
+    locker_1 = spawn_locker(lock_path)
+    locker_2 = spawn_locker(lock_path)
+
     assert not locker_1.has_lock()
     assert not locker_2.has_lock()
-    
+
     locker_1.acquire()
     time.sleep(0.1)
     locker_2.acquire()
     time.sleep(0.1)
-    
+
     assert locker_1.has_lock()
     assert not locker_2.has_lock()
-    
+
     locker_1.release()
     time.sleep(0.1)
-    
+
     assert not locker_1.has_lock()
     assert locker_2.has_lock()
-    
+
     locker_2.release()
     time.sleep(0.1)
-    
+
     assert not locker_1.has_lock()
     assert not locker_2.has_lock()
 
 
 @test
-def lock_is_released_if_holding_process_is_brutally_killed(lock_path):
-    locker_1 = Locker(lock_path)
-    locker_2 = Locker(lock_path)
-    
+@with_lockers
+def lock_is_released_if_holding_process_is_brutally_killed(lock_path, spawn_locker):
+    locker_1 = spawn_locker(lock_path)
+    locker_2 = spawn_locker(lock_path)
+
     assert not locker_1.has_lock()
     assert not locker_2.has_lock()
-    
+
     locker_1.acquire()
     time.sleep(0.1)
     locker_2.acquire()
     time.sleep(0.1)
-    
+
     assert locker_1.has_lock()
     assert not locker_2.has_lock()
-    
-    locker_1.kill(getattr(signal, "SIGKILL", signal.SIGTERM))
+
+    locker_1.terminate()
     time.sleep(0.1)
-    
+
     assert locker_2.has_lock()
     locker_2.release()
 
 
 @test
-def can_set_timeout_to_zero_to_raise_exception_if_lock_cannot_be_acquired(lock_path):
-    locker_1 = Locker(lock_path)
-    locker_2 = Locker(lock_path, timeout=0)
-    
+@with_lockers
+def can_set_timeout_to_zero_to_raise_exception_if_lock_cannot_be_acquired(lock_path, spawn_locker):
+    locker_1 = spawn_locker(lock_path)
+    locker_2 = spawn_locker(lock_path, timeout=0)
+
     assert not locker_1.has_lock()
     assert not locker_2.has_lock()
-    
+
     locker_1.acquire()
     time.sleep(0.1)
     locker_2.acquire()
     time.sleep(0.1)
-    
+
     assert locker_1.has_lock()
     assert not locker_2.has_lock()
-    
+
     locker_1.release()
     time.sleep(0.1)
-    
+
     assert not locker_1.has_lock()
     assert not locker_2.has_lock()
     assert locker_2.has_error()
 
 
 @test
-def error_is_raised_after_timeout_has_expired(lock_path):
-    locker_1 = Locker(lock_path)
-    locker_2 = Locker(lock_path, timeout=0.5)
-    
+@with_lockers
+def error_is_raised_after_timeout_has_expired(lock_path, spawn_locker):
+    locker_1 = spawn_locker(lock_path)
+    locker_2 = spawn_locker(lock_path, timeout=0.5)
+
     assert not locker_1.has_lock()
     assert not locker_2.has_lock()
-    
+
     locker_1.acquire()
     time.sleep(0.1)
     locker_2.acquire()
     time.sleep(0.1)
-    
+
     assert locker_1.has_lock()
     assert not locker_2.has_lock()
     assert not locker_2.has_error()
-    
+
     time.sleep(1)
-    
+
     assert locker_1.has_lock()
     assert not locker_2.has_lock()
     assert locker_2.has_error()
-    
+
     locker_1.release()
 
 
 @test
-def lock_is_acquired_if_available_before_timeout_expires(lock_path):
-    locker_1 = Locker(lock_path)
-    locker_2 = Locker(lock_path, timeout=2)
-    
+@with_lockers
+def lock_is_acquired_if_available_before_timeout_expires(lock_path, spawn_locker):
+    locker_1 = spawn_locker(lock_path)
+    locker_2 = spawn_locker(lock_path, timeout=2)
+
     assert not locker_1.has_lock()
     assert not locker_2.has_lock()
-    
+
     locker_1.acquire()
     time.sleep(0.1)
     locker_2.acquire()
     time.sleep(0.1)
-    
+
     assert locker_1.has_lock()
     assert not locker_2.has_lock()
     assert not locker_2.has_error()
-    
+
     time.sleep(0.5)
     locker_1.release()
     time.sleep(0.1)
-    
+
     assert not locker_1.has_lock()
     assert locker_2.has_lock()
 
     locker_2.release()
 
 
-def _lockers(number_of_lockers, lock_path):
-    return tuple(Locker(lock_path) for i in range(number_of_lockers))
-    
 
-class Locker(object):
+class _Locker(object):
     def __init__(self, path, timeout=None):
         self._stdout = io.BytesIO()
         self._stderr = io.BytesIO()
@@ -273,14 +295,15 @@ class Locker(object):
             [sys.executable, _locker_script_path, path, str(timeout)],
             stdout=self._stdout,
             stderr=self._stderr,
+            allow_error=True,
         )
-        
+
     def acquire(self):
         self._process.stdin_write(b"\n")
-        
+
     def release(self):
         self._process.stdin_write(b"\n")
-    
+
     def wait_for_lock(self):
         start_time = time.time()
         while not self.has_lock():
@@ -289,18 +312,21 @@ class Locker(object):
             time.sleep(0.1)
             if time.time() - start_time > 1:
                 raise RuntimeError("Could not acquire lock, stdout:\n{0}".format(self._stdout.getvalue()))
-    
+
     def has_lock(self):
         lines = self._stdout_lines()
         return "Acquired" in lines and "Released" not in lines
-    
+
     def has_error(self):
         return "LockError" in self._stdout_lines()
-    
-    def kill(self, signal):
+
+    def terminate(self):
         pid = int(self._stdout_lines()[0].strip())
-        os.kill(pid, signal)
-    
+        os.kill(pid, getattr(signal, "SIGKILL", 9))
+
+    def wait(self):
+        self._process.wait_for_result()
+
     def _stdout_lines(self):
         output = self._stdout.getvalue().decode("ascii")
         return [line.strip() for line in output.split("\n")]
