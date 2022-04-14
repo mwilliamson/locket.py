@@ -150,19 +150,32 @@ class _LockFile(object):
         self._file = None
 
     def acquire(self, timeout=None, retry_period=None):
-        if self._file is None:
-            self._file = open(self._path, "wb")
-        if timeout is None and _lock_file_blocking_available:
-            _lock_file_blocking(self._file)
+        new_fd = self._file is None
+        fd = open(self._path, "wb")  if new_fd  else self._file
+
+        try:
+            if timeout is None and _lock_file_blocking_available:
+                _lock_file_blocking(fd)
+            else:
+                _acquire_non_blocking(
+                    acquire=lambda: _lock_file_non_blocking(fd),
+                    timeout=timeout,
+                    retry_period=retry_period,
+                    path=self._path,
+                )
+        except:
+            # Avoid leaving a hanging file descriptor if created just to check the lock
+            if new_fd:
+                fd.close()
+            raise
         else:
-            _acquire_non_blocking(
-                acquire=lambda: _lock_file_non_blocking(self._file),
-                timeout=timeout,
-                retry_period=retry_period,
-                path=self._path,
-            )
+            self._file = fd
+
     
     def release(self):
+        if self._file is None:
+            raise LockError("Lock not acquired, cannot be released.")
+
         _unlock_file(self._file)
         self._file.close()
         self._file = None
