@@ -38,7 +38,7 @@ module in the standard library. Specifically, their behaviour is:
 * When the lock is unlocked, calling ``acquire()`` returns immediately and changes
   the lock state to locked.
 
-* When the lock is locked, calling `acquire()` will block until the lock state
+* When the lock is locked, calling ``acquire()`` will block until the lock state
   changes to unlocked, or until the timeout expires.
 
 * If a process holds a lock, any thread in that process can call ``release()`` to
