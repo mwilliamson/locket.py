@@ -11,11 +11,11 @@ Locket implements a lock that can be used by multiple processes provided they us
     with locket.lock_file("path/to/lock/file"):
         perform_action()
 
-    # Raise error if lock cannot be acquired immediately
+    # Raise LockError if lock cannot be acquired immediately
     with locket.lock_file("path/to/lock/file", timeout=0):
         perform_action()
 
-    # Raise error if lock cannot be acquired after thirty seconds
+    # Raise LockError if lock cannot be acquired after thirty seconds
     with locket.lock_file("path/to/lock/file", timeout=30):
         perform_action()
 
