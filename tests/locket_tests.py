@@ -128,6 +128,16 @@ def thread_cannot_obtain_lock_using_same_path_with_different_arguments_without_r
 
 
 @test
+def calling_release_on_unlocked_lock_raises_lock_error(lock_path):
+    lock = locket.lock_file(lock_path)
+    try:
+        lock.release()
+        assert False, "Expected LockError"
+    except locket.LockError as error:
+        assert str(error) == "cannot release unlocked lock"
+
+
+@test
 def the_same_lock_file_object_is_used_for_the_same_path(lock_path):
     # We explicitly check the same lock is used to ensure that the lock isn't
     # re-entrant, even if the underlying platform lock is re-entrant.

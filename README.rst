@@ -44,6 +44,8 @@ module in the standard library. Specifically, their behaviour is:
 * If a process holds a lock, any thread in that process can call ``release()`` to
   change the state to unlocked.
 
+* Calling ``release()`` on an unlocked lock raises ``LockError``.
+
 * Behaviour of locks after ``fork`` is undefined.
 
 Installation

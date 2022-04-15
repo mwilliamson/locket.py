@@ -171,6 +171,9 @@ class _LockFile(object):
             self._file = fileobj
 
     def release(self):
+        if self._file is None:
+            raise LockError("cannot release unlocked lock")
+
         _unlock_file(self._file)
         self._file.close()
         self._file = None
