@@ -9,7 +9,7 @@ def read(fname):
 setup(
     name='locket',
     version='0.2.1',
-    description='File-based locks for Python for Linux and Windows',
+    description='File-based locks for Python on Linux and Windows',
     long_description=read("README.rst"),
     author='Michael Williamson',
     author_email='mike@zwobble.org',

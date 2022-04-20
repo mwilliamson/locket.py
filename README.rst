@@ -1,5 +1,5 @@
-locket.py: File-based locks for Python for Linux and Windows
-============================================================
+locket.py: File-based locks for Python on Linux and Windows
+===========================================================
 
 Locket implements a file-based lock that can be used by multiple processes provided they use the same path.
 
