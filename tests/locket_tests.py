@@ -5,7 +5,7 @@ import sys
 import time
 import signal
 
-from nose.tools import istest, nottest
+import pytest
 import spur
 
 import locket
@@ -15,40 +15,30 @@ from .tempdir import create_temporary_dir
 local_shell = spur.LocalShell()
 
 
-@nottest
-def test(func):
-    @functools.wraps(func)
-    @istest
-    def run_test():
-        with create_temporary_dir() as temp_dir:
-            lock_path = os.path.join(temp_dir, "some-lock")
-            return func(lock_path)
-
-    return run_test
+@pytest.fixture(name="lock_path")
+def _fixture_lock_path():
+    with create_temporary_dir() as temp_dir:
+        yield os.path.join(temp_dir, "some-lock")
 
 
-def with_lockers(func):
-    @functools.wraps(func)
-    def run_test(*args, **kwargs):
-        lockers = []
+@pytest.fixture(name="spawn_locker")
+def _fixture_spawn_locker():
+    lockers = []
 
-        def spawn_locker(*args, **kwargs):
-            locker = _Locker(*args, **kwargs)
-            lockers.append(locker)
-            return locker
+    def spawn_locker(*args, **kwargs):
+        locker = _Locker(*args, **kwargs)
+        lockers.append(locker)
+        return locker
 
-        try:
-            return func(*args, spawn_locker=spawn_locker, **kwargs)
-        finally:
-            for locker in lockers:
-                locker.terminate()
-                locker.wait()
-
-    return run_test
+    try:
+        yield spawn_locker
+    finally:
+        for locker in lockers:
+            locker.terminate()
+            locker.wait()
 
 
-@test
-def single_process_can_obtain_uncontested_lock(lock_path):
+def test_single_process_can_obtain_uncontested_lock(lock_path):
     has_run = False
     with locket.lock_file(lock_path):
         has_run = True
@@ -56,8 +46,7 @@ def single_process_can_obtain_uncontested_lock(lock_path):
     assert has_run
 
 
-@test
-def lock_can_be_acquired_with_timeout_of_zero(lock_path):
+def test_lock_can_be_acquired_with_timeout_of_zero(lock_path):
     has_run = False
     with locket.lock_file(lock_path, timeout=0):
         has_run = True
@@ -65,8 +54,7 @@ def lock_can_be_acquired_with_timeout_of_zero(lock_path):
     assert has_run
 
 
-@test
-def lock_is_released_by_context_manager_exit(lock_path):
+def test_lock_is_released_by_context_manager_exit(lock_path):
     has_run = False
 
     # Keep a reference to first_lock so it holds onto the lock
@@ -81,8 +69,7 @@ def lock_is_released_by_context_manager_exit(lock_path):
     assert has_run
 
 
-@test
-def can_use_acquire_and_release_to_control_lock(lock_path):
+def test_can_use_acquire_and_release_to_control_lock(lock_path):
     has_run = False
     lock = locket.lock_file(lock_path)
     lock.acquire()
@@ -94,8 +81,7 @@ def can_use_acquire_and_release_to_control_lock(lock_path):
     assert has_run
 
 
-@test
-def thread_cannot_obtain_lock_using_same_object_twice_without_release(lock_path):
+def test_thread_cannot_obtain_lock_using_same_object_twice_without_release(lock_path):
     with locket.lock_file(lock_path, timeout=0) as lock:
         try:
             lock.acquire()
@@ -104,8 +90,7 @@ def thread_cannot_obtain_lock_using_same_object_twice_without_release(lock_path)
             pass
 
 
-@test
-def thread_cannot_obtain_lock_using_same_path_twice_without_release(lock_path):
+def test_thread_cannot_obtain_lock_using_same_path_twice_without_release(lock_path):
     with locket.lock_file(lock_path, timeout=0):
         lock = locket.lock_file(lock_path, timeout=0)
         try:
@@ -115,8 +100,7 @@ def thread_cannot_obtain_lock_using_same_path_twice_without_release(lock_path):
             pass
 
 
-@test
-def thread_cannot_obtain_lock_using_same_path_with_different_arguments_without_release(lock_path):
+def test_thread_cannot_obtain_lock_using_same_path_with_different_arguments_without_release(lock_path):
     lock1 = locket.lock_file(lock_path, timeout=None)
     lock2 = locket.lock_file(lock_path, timeout=0)
     lock1.acquire()
@@ -127,8 +111,7 @@ def thread_cannot_obtain_lock_using_same_path_with_different_arguments_without_r
         pass
 
 
-@test
-def calling_release_on_unlocked_lock_raises_lock_error(lock_path):
+def test_calling_release_on_unlocked_lock_raises_lock_error(lock_path):
     lock = locket.lock_file(lock_path)
     try:
         lock.release()
@@ -137,8 +120,7 @@ def calling_release_on_unlocked_lock_raises_lock_error(lock_path):
         assert str(error) == "cannot release unlocked lock"
 
 
-@test
-def the_same_lock_file_object_is_used_for_the_same_path(lock_path):
+def test_the_same_lock_file_object_is_used_for_the_same_path(lock_path):
     # We explicitly check the same lock is used to ensure that the lock isn't
     # re-entrant, even if the underlying platform lock is re-entrant.
     first_lock = locket.lock_file(lock_path, timeout=0)
@@ -146,8 +128,7 @@ def the_same_lock_file_object_is_used_for_the_same_path(lock_path):
     assert first_lock._lock is second_lock._lock
 
 
-@test
-def the_same_lock_file_object_is_used_for_the_same_path_with_different_arguments(lock_path):
+def test_the_same_lock_file_object_is_used_for_the_same_path_with_different_arguments(lock_path):
     # We explicitly check the same lock is used to ensure that the lock isn't
     # re-entrant, even if the underlying platform lock is re-entrant.
     first_lock = locket.lock_file(lock_path, timeout=None)
@@ -155,16 +136,13 @@ def the_same_lock_file_object_is_used_for_the_same_path_with_different_arguments
     assert first_lock._lock is second_lock._lock
 
 
-@test
-def different_file_objects_are_used_for_different_paths(lock_path):
+def test_different_file_objects_are_used_for_different_paths(lock_path):
     first_lock = locket.lock_file(lock_path, timeout=0)
     second_lock = locket.lock_file(lock_path + "-2", timeout=0)
     assert first_lock._lock is not second_lock._lock
 
 
-@test
-@with_lockers
-def lock_file_blocks_until_lock_is_available(lock_path, spawn_locker):
+def test_lock_file_blocks_until_lock_is_available(lock_path, spawn_locker):
     locker_1 = spawn_locker(lock_path)
     locker_2 = spawn_locker(lock_path)
 
@@ -192,9 +170,7 @@ def lock_file_blocks_until_lock_is_available(lock_path, spawn_locker):
     assert not locker_2.has_lock()
 
 
-@test
-@with_lockers
-def lock_is_released_if_holding_process_is_brutally_killed(lock_path, spawn_locker):
+def test_lock_is_released_if_holding_process_is_brutally_killed(lock_path, spawn_locker):
     locker_1 = spawn_locker(lock_path)
     locker_2 = spawn_locker(lock_path)
 
@@ -216,9 +192,7 @@ def lock_is_released_if_holding_process_is_brutally_killed(lock_path, spawn_lock
     locker_2.release()
 
 
-@test
-@with_lockers
-def can_set_timeout_to_zero_to_raise_exception_if_lock_cannot_be_acquired(lock_path, spawn_locker):
+def test_can_set_timeout_to_zero_to_raise_exception_if_lock_cannot_be_acquired(lock_path, spawn_locker):
     locker_1 = spawn_locker(lock_path)
     locker_2 = spawn_locker(lock_path, timeout=0)
 
@@ -241,9 +215,7 @@ def can_set_timeout_to_zero_to_raise_exception_if_lock_cannot_be_acquired(lock_p
     assert locker_2.has_error()
 
 
-@test
-@with_lockers
-def error_is_raised_after_timeout_has_expired(lock_path, spawn_locker):
+def test_error_is_raised_after_timeout_has_expired(lock_path, spawn_locker):
     locker_1 = spawn_locker(lock_path)
     locker_2 = spawn_locker(lock_path, timeout=0.5)
 
@@ -268,9 +240,7 @@ def error_is_raised_after_timeout_has_expired(lock_path, spawn_locker):
     locker_1.release()
 
 
-@test
-@with_lockers
-def lock_is_acquired_if_available_before_timeout_expires(lock_path, spawn_locker):
+def test_lock_is_acquired_if_available_before_timeout_expires(lock_path, spawn_locker):
     locker_1 = spawn_locker(lock_path)
     locker_2 = spawn_locker(lock_path, timeout=2)
 

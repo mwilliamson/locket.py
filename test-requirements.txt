@@ -1,2 +1,2 @@
-nose>=1.2.1,<2
+pytest
 spur.local>=0.3.7,<0.4
