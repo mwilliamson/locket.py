@@ -302,7 +302,8 @@ class _Locker(object):
 
     def terminate(self):
         pid = int(self._stdout_lines()[0].strip())
-        os.kill(pid, getattr(signal, "SIGKILL", 9))
+        if self._process.is_running():
+            os.kill(pid, getattr(signal, "SIGKILL", signal.SIGTERM))
 
     def wait(self):
         self._process.wait_for_result()
