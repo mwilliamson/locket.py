@@ -150,21 +150,21 @@ def test_lock_file_blocks_until_lock_is_available(lock_path, spawn_locker):
     assert not locker_2.has_lock()
 
     locker_1.acquire()
-    time.sleep(0.1)
+    time.sleep(0.5)
     locker_2.acquire()
-    time.sleep(0.1)
+    time.sleep(0.5)
 
     assert locker_1.has_lock()
     assert not locker_2.has_lock()
 
     locker_1.release()
-    time.sleep(0.1)
+    time.sleep(0.5)
 
     assert not locker_1.has_lock()
     assert locker_2.has_lock()
 
     locker_2.release()
-    time.sleep(0.1)
+    time.sleep(0.5)
 
     assert not locker_1.has_lock()
     assert not locker_2.has_lock()
@@ -178,15 +178,15 @@ def test_lock_is_released_if_holding_process_is_brutally_killed(lock_path, spawn
     assert not locker_2.has_lock()
 
     locker_1.acquire()
-    time.sleep(0.1)
+    time.sleep(0.5)
     locker_2.acquire()
-    time.sleep(0.1)
+    time.sleep(0.5)
 
     assert locker_1.has_lock()
     assert not locker_2.has_lock()
 
     locker_1.terminate()
-    time.sleep(0.1)
+    time.sleep(0.5)
 
     assert locker_2.has_lock()
     locker_2.release()
@@ -200,15 +200,15 @@ def test_can_set_timeout_to_zero_to_raise_exception_if_lock_cannot_be_acquired(l
     assert not locker_2.has_lock()
 
     locker_1.acquire()
-    time.sleep(0.1)
+    time.sleep(0.5)
     locker_2.acquire()
-    time.sleep(0.1)
+    time.sleep(0.5)
 
     assert locker_1.has_lock()
     assert not locker_2.has_lock()
 
     locker_1.release()
-    time.sleep(0.1)
+    time.sleep(0.5)
 
     assert not locker_1.has_lock()
     assert not locker_2.has_lock()
@@ -223,9 +223,9 @@ def test_error_is_raised_after_timeout_has_expired(lock_path, spawn_locker):
     assert not locker_2.has_lock()
 
     locker_1.acquire()
-    time.sleep(0.1)
+    time.sleep(0.5)
     locker_2.acquire()
-    time.sleep(0.1)
+    time.sleep(0.5)
 
     assert locker_1.has_lock()
     assert not locker_2.has_lock()
@@ -248,9 +248,9 @@ def test_lock_is_acquired_if_available_before_timeout_expires(lock_path, spawn_l
     assert not locker_2.has_lock()
 
     locker_1.acquire()
-    time.sleep(0.1)
+    time.sleep(0.5)
     locker_2.acquire()
-    time.sleep(0.1)
+    time.sleep(0.5)
 
     assert locker_1.has_lock()
     assert not locker_2.has_lock()
@@ -258,7 +258,7 @@ def test_lock_is_acquired_if_available_before_timeout_expires(lock_path, spawn_l
 
     time.sleep(0.5)
     locker_1.release()
-    time.sleep(0.1)
+    time.sleep(0.5)
 
     assert not locker_1.has_lock()
     assert locker_2.has_lock()
@@ -289,7 +289,7 @@ class _Locker(object):
         while not self.has_lock():
             if not self._process.is_running():
                 raise self._process.wait_for_result().to_error()
-            time.sleep(0.1)
+            time.sleep(0.5)
             if time.time() - start_time > 1:
                 raise RuntimeError("Could not acquire lock, stdout:\n{0}".format(self._stdout.getvalue()))
 
